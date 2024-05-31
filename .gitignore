@@ -1,0 +1,11 @@
+# Ignorar el archivo .env
+.env
+
+# Ignorar el archivo requirements.txt
+requirements.txt
+
+# Ignorar el entorno virtual env
+env/
+
+# Ignorar el directorio .idea de IntelliJ IDEA
+.idea/
