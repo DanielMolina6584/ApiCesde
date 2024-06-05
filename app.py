@@ -1,47 +1,107 @@
-from flask import Flask, request, jsonify
-from domain.Crud import CRUD
-import os
-from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
+from domain.Crud import Crud
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-app = Flask(__name__)
+app = FastAPI()
+crud = Crud()
 
-load_dotenv()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+@app.post("/crear/")
+async def crear_persona(request: Request):
+    try:
+        data = await request.json()
+        nombre = data.get('nombre')
+        apellido = data.get('apellido')
+        correo = data.get('correo')
+        password = data.get('password')
+        crud.crearUsuario(nombre, apellido, correo, password)
+        return {"mensaje": "Persona creada correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-BASE_URL = os.getenv("BASE_URL")
+def verificar_credenciales(correo: str, password: str):
+    usuario = crud.getUsuario(correo)
+    if usuario and usuario["contraseña"] == password:
+        return True
+    return False
 
-crud = CRUD()
+@app.post("/login/")
+async def login(request: Request):
+    data = await request.json()
+    correo = data.get('correo')
+    password = data.get('password')
+    if verificar_credenciales(correo, password):
+        return {"mensaje": "Inicio de sesión exitoso"}
+    else:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
-@app.route(f'{BASE_URL}/crear', methods=['POST'])
-def crear_persona():
-    if request.method == 'POST':
-        nombre = request.form['nombre']
-        apellido = request.form['apellido']
-        email = request.form['email']
-        cel = request.form['cel']
-        crud.crearInfoPersona(nombre, apellido, email, cel)
-        return 'Persona creada correctamente'
+@app.get("/nombre_usuario/")
+async def obtener_nombre_usuario(correo: str):
+    usuario = crud.getUsuario(correo)
+    if usuario:
+        return usuario
+    else:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-@app.route(f'{BASE_URL}/actualizar/<int:id_persona>', methods=['POST'])
-def actualizar_persona(id_persona):
-    if request.method == 'POST':
-        nuevo_nombre = request.form['nombre']
-        nuevo_apellido = request.form['apellido']
-        nuevo_email = request.form['email']
-        nuevo_cel = request.form['cel']
-        crud.actualizarInfoPersona(id_persona, nuevo_nombre, nuevo_apellido, nuevo_email, nuevo_cel)
-        return 'Información de persona actualizada correctamente'
-
-@app.route(f'{BASE_URL}/eliminar/<int:id_persona>', methods=['GET'])
-def eliminar_persona(id_persona):
+@app.get("/obtener/ejercicios")
+def obtener_ejercicios(request: Request):
     if request.method == 'GET':
-        crud.eliminarInfoPersona(id_persona)
-        return 'Persona eliminada correctamente'
+        ejercicios = crud.getEjercicios()
+        return JSONResponse(content=ejercicios)
 
-@app.route(f'{BASE_URL}/obtener', methods=['GET'])
-def obtener_personas():
-    if request.method == 'GET':
-        personas = crud.getInfoPersona()
-        return jsonify(personas)
+@app.post("/crear/ejercicio")
+async def crear_ejercicio(request: Request):
+    try:
+        data = await request.json()
+        ejercicio = data.get('ejercicio')
+        descripcion = data.get('descripcion')
+        repeticiones = data.get('repeticiones')
+        series = data.get('series')
+        imagen = data.get('imagen')
+        type = data.get('type')
+        crud.crearEjercicio(ejercicio, descripcion, repeticiones, series, type, imagen)
+        return True
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.get("/ejercicios")
+async def get_ejercicios_by_type(type: str):
+    try:
+        ejercicios = crud.getEjerciciosByType(type)
+        return JSONResponse(content=ejercicios)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/eliminar/ejercicio/{ejercicio_id}")
+async def eliminar_ejercicio(ejercicio_id: int):
+    try:
+        crud.eliminarEjercicio(ejercicio_id)
+        return {"message": "Ejercicio eliminado exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/actualizar/ejercicio/{id}")
+async def actualizar_ejercicio(id: int, request: Request):
+    try:
+        data = await request.json()
+        ejercicio = data.get('ejercicio')
+        descripcion = data.get('descripcion')
+        repeticiones = data.get('repeticiones')
+        series = data.get('series')
+        imagen = data.get('imagen')
+        tipo = data.get('tipo')
+        crud.actualizarEjercicio(id, ejercicio, descripcion, repeticiones, series, tipo, imagen)
+        return {"message": "Ejercicio actualizado correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="localhost", port=8000)

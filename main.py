@@ -1,9 +1,9 @@
-from domain.Crud import CRUD
+from domain.Crud import Crud
 from domain.Interaccion import Interaccion
 
 
 if __name__ == "__main__":
-    crud = CRUD()
+    crud = Crud()
 
     interaction = Interaccion()
     interaction.ejecutar_acciones()
